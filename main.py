@@ -15,7 +15,7 @@ async def healthcheck():
     return {
         "status": "healthy server",
         "timestamp": datetime.utcnow().isoformat(),
-        "service": "simple-fastapi-server"
+        "service": "simple-fastapi-server-test"
     }
 
 if __name__ == "__main__":
