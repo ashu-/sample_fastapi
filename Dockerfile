@@ -8,7 +8,8 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    NEW_RELIC_CONFIG_FILE=newrelic.ini
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -24,8 +25,9 @@ RUN pip install uv
 # Install Python dependencies using uv
 RUN uv sync --frozen
 
-# Copy application code
+# Copy application code and New Relic configuration
 COPY main.py .
+COPY newrelic.ini .
 
 # Create non-root user for security
 RUN useradd --create-home --shell /bin/bash app && chown -R app:app /app
@@ -38,5 +40,5 @@ EXPOSE 8005
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8005/health || exit 1
 
-# Run the application
-CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8005"]
+# Run the application with New Relic monitoring
+CMD ["uv", "run", "newrelic-admin", "run-program", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8005"]
