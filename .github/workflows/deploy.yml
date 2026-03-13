@@ -18,6 +18,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Create safe docker image name
+      - name: Generate Image Name
+        run: |
+          IMAGE_NAME=$(echo "${{ github.repository }}" | tr '/' '-')
+          echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
         
@@ -32,16 +38,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Build and Push
+      # Build and push image
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: ghcr.io/${{ github.repository }}:latest
+          tags: |
+            ghcr.io/${{ env.IMAGE_NAME }}:latest
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
-      # Deploy
+      # Deploy to server
       - name: Deploy on server via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -51,7 +59,7 @@ jobs:
           script: |
             docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
 
-            IMAGE=ghcr.io/${{ github.repository }}:latest
+            IMAGE=ghcr.io/${{ env.IMAGE_NAME }}:latest
             TEST_CONTAINER=fastapi_healthcheck
             MAIN_CONTAINER=fastapi_app
             MAIN_PORT=8000
@@ -59,23 +67,36 @@ jobs:
 
             docker pull $IMAGE
 
+            docker rm -f $TEST_CONTAINER || true
+
             docker run -d --name $TEST_CONTAINER -p $TEST_PORT:8000 $IMAGE
 
             sleep 10
 
             if curl -Lf http://localhost:$TEST_PORT/health; then
               echo "Healthcheck passed. Replacing old container."
+
               docker stop $MAIN_CONTAINER || true
               docker rm $MAIN_CONTAINER || true
+
               docker stop $TEST_CONTAINER
               docker rm $TEST_CONTAINER
-              docker run -d --name $MAIN_CONTAINER -p $MAIN_PORT:8000 --restart unless-stopped $IMAGE
+
+              docker run -d \
+                --name $MAIN_CONTAINER \
+                -p $MAIN_PORT:8000 \
+                --restart unless-stopped \
+                $IMAGE
+
               echo "Deployment successful!"
+
             else
               echo "Healthcheck failed. Keeping old container."
+
               docker logs $TEST_CONTAINER
               docker stop $TEST_CONTAINER
               docker rm $TEST_CONTAINER
+
               exit 1
             fi
 
