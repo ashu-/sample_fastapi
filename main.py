@@ -13,7 +13,7 @@ async def healthcheck():
     Healthcheck endpoint to verify the server is running
     """
     return {
-        "status": "healthy",
+        "status": "healthy server",
         "timestamp": datetime.utcnow().isoformat(),
         "service": "simple-fastapi-server"
     }
