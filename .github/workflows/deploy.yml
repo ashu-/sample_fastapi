@@ -59,7 +59,7 @@ jobs:
 
             TEST_CONTAINER=fastapi_healthcheck
             MAIN_CONTAINER=fastapi_app
-            MAIN_PORT=8000
+            MAIN_PORT=8005
             TEST_PORT=8080
 
             echo "Pulling latest image..."
@@ -68,7 +68,7 @@ jobs:
             docker rm -f $TEST_CONTAINER || true
 
             echo "Starting test container..."
-            docker run -d --name $TEST_CONTAINER -p $TEST_PORT:8000 $IMAGE
+            docker run -d --name $TEST_CONTAINER -p $TEST_PORT:8005 $IMAGE
 
             sleep 10
 
@@ -83,7 +83,7 @@ jobs:
 
               docker run -d \
                 --name $MAIN_CONTAINER \
-                -p $MAIN_PORT:8000 \
+                -p $MAIN_PORT:8005 \
                 --restart unless-stopped \
                 $IMAGE
 
